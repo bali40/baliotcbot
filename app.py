@@ -144,12 +144,12 @@ def handle_command(text: str):
             "/signal EURUSD\n"
             "/on\n"
             "/off"
-        )
+       if cmd == "/help":
+    return (
+        "Dostępne komendy:\n"
+        "/list - lista par\n"
+        "/add EURUSD - dodaj parę\n"
+        "/remove EURUSD - usuń parę\n"
+        "/signal )
 
-    if cmd == "/help":
-        return (
-            "Dostępne komendy:\n"
-            "/list - lista par\n"
-            "/add EURUSD - dodaj parę\n"
-            "/remove EURUSD - usuń parę\n"
-            "/signal
+    
