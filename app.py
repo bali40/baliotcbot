@@ -173,6 +173,8 @@ def telegram_webhook():
     response = handle_command(text)
     send_telegram_message(response)
 
-    return jsonify({"ok": True})      
+    return jsonify({"ok": True})   
+    if _name_ == "_main_":
+    app.run(host="0.0.0.0", port=10000)
 
     
