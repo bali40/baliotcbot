@@ -42,5 +42,3 @@ TF: {data.get("timeframe")}
     send_telegram_message(text)
     return jsonify({"ok": True})
 
-if _name_ == "_main_":
-    app.run()
