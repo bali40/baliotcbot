@@ -144,6 +144,7 @@ def handle_command(text: str):
             "/signal EURUSD\n"
             "/on\n"
             "/off"
+        )
        if cmd == "/help":
     return (
         "Dostępne komendy:\n"
