@@ -150,6 +150,9 @@ def handle_command(text: str):
         "/list - lista par\n"
         "/add EURUSD - dodaj parę\n"
         "/remove EURUSD - usuń parę\n"
-        "/signal )
+        "/signal EURUSD - sprawdź sygnał\n"
+        "/on - włącz sygnały\n"
+        "/off - wyłącz sygnały"
+    )
 
     
