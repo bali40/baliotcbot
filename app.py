@@ -154,5 +154,25 @@ def handle_command(text: str):
         "/on - włącz sygnały\n"
         "/off - wyłącz sygnały"
     )
+  @app.route(f"/{TELEGRAM_BOT_TOKEN}", methods=["POST"])
+def telegram_webhook():
+    update = request.json or {}
+
+    message = update.get("message", {})
+    chat = message.get("chat", {})
+    chat_id = str(chat.get("id", ""))
+
+    # tylko Twój chat
+    if chat_id != str(TELEGRAM_CHAT_ID):
+        return jsonify({"ok": True})
+
+    text = message.get("text", "").strip()
+    if not text:
+        return jsonify({"ok": True})
+
+    response = handle_command(text)
+    send_telegram_message(response)
+
+    return jsonify({"ok": True})      
 
     
