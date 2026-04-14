@@ -4,7 +4,7 @@ import requests
 import yfinance as yf
 from flask import Flask, request, jsonify
 
-app = Flask(_name_)
+app = Flask(__name__)
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
@@ -234,5 +234,5 @@ def telegram_webhook():
     return jsonify({"ok": True})
 
 
-if _name_ == "_main_":
+if _name_ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 10000)))
