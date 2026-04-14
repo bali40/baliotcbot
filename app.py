@@ -4,7 +4,7 @@ import requests
 import yfinance as yf
 from flask import Flask, request, jsonify
 
-app = Flask(__name__)
+app = Flask(_name_)
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
@@ -18,8 +18,6 @@ DEFAULT_DATA = {
     "symbols": ["EURUSD=X", "GBPUSD=X"]
 }
 
-
-# ===================== DATA =====================
 
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
@@ -49,13 +47,12 @@ def load_data():
         return DEFAULT_DATA.copy()
 
 
-# ===================== TELEGRAM =====================
-
-def send_telegram_message(text):
+def send_telegram_message(text, chat_id=None):
     try:
+        target_chat_id = chat_id or TELEGRAM_CHAT_ID
         url = f"{BASE_URL}/sendMessage"
         payload = {
-            "chat_id": TELEGRAM_CHAT_ID,
+            "chat_id": target_chat_id,
             "text": text
         }
         response = requests.post(url, json=payload, timeout=15)
@@ -63,8 +60,6 @@ def send_telegram_message(text):
     except Exception as e:
         print("Telegram error:", e)
 
-
-# ===================== SYMBOL =====================
 
 def normalize_symbol(symbol: str) -> str:
     return symbol.upper().replace("/", "").replace("-", "").strip()
@@ -76,8 +71,6 @@ def yahoo_symbol(symbol: str) -> str:
         return f"{symbol}=X"
     return symbol
 
-
-# ===================== SIGNAL =====================
 
 def get_signal(symbol: str):
     tf = "5m"
@@ -122,7 +115,6 @@ def get_signal(symbol: str):
         if last_close > last_ema9 > last_ema21 and last_rsi > 55:
             action = "BUY"
             reason = "trend up + momentum"
-
         elif last_close < last_ema9 < last_ema21 and last_rsi < 45:
             action = "SELL"
             reason = "trend down + momentum"
@@ -138,8 +130,6 @@ def get_signal(symbol: str):
     except Exception as e:
         return None, str(e)
 
-
-# ===================== COMMANDS =====================
 
 def handle_command(text: str):
     data = load_data()
@@ -196,7 +186,13 @@ def handle_command(text: str):
         result, error = get_signal(parts[1])
         if error:
             return f"Błąd: {error}"
-        return f"{result['symbol']}\n{result['action']}\nRSI: {result['rsi']}"
+        return (
+            f"Para: {result['symbol']}\n"
+            f"Sygnał: {result['action']}\n"
+            f"Cena: {result['price']}\n"
+            f"RSI: {result['rsi']}\n"
+            f"Powód: {result['reason']}"
+        )
 
     if cmd == "/on":
         data["enabled"] = True
@@ -211,8 +207,6 @@ def handle_command(text: str):
     return "Nieznana komenda"
 
 
-# ===================== WEBHOOK =====================
-
 @app.route("/", methods=["GET"])
 def home():
     return "Bot działa", 200
@@ -222,24 +216,23 @@ def home():
 def telegram_webhook():
     update = request.json or {}
 
+    print("UPDATE:", update)
+
     message = update.get("message", {})
     chat = message.get("chat", {})
     chat_id = str(chat.get("id", ""))
 
-    if chat_id != str(TELEGRAM_CHAT_ID):
-        return jsonify({"ok": True})
+    print("CHAT ID:", chat_id)
 
     text = message.get("text", "").strip()
     if not text:
         return jsonify({"ok": True})
 
     response = handle_command(text)
-    send_telegram_message(response)
+    send_telegram_message(response, chat_id=chat_id)
 
     return jsonify({"ok": True})
 
-
-# ===================== RUN =====================
 
 if _name_ == "_main_":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 10000)))
