@@ -54,7 +54,10 @@ def send_telegram_message(text, chat_id=None):
             "chat_id": target_chat_id,
             "text": text
         }
+
         response = requests.post(url, json=payload, timeout=15)
+        print("TELEGRAM STATUS:", response.status_code)
+        print("TELEGRAM RESPONSE:", response.text)
         response.raise_for_status()
     except Exception as e:
         print("Telegram error:", e)
@@ -87,9 +90,19 @@ def get_signal(symbol: str):
         if df is None or df.empty or len(df) < 25:
             return None, "Brak danych"
 
+        if hasattr(df.columns, "nlevels") and df.columns.nlevels > 1:
+            df.columns = df.columns.get_level_values(0)
+
         close = df["Close"].dropna()
         high = df["High"].dropna()
         low = df["Low"].dropna()
+
+        if hasattr(close, "ndim") and close.ndim > 1:
+            close = close.iloc[:, 0]
+        if hasattr(high, "ndim") and high.ndim > 1:
+            high = high.iloc[:, 0]
+        if hasattr(low, "ndim") and low.ndim > 1:
+            low = low.iloc[:, 0]
 
         if len(close) < 20 or len(high) < 14 or len(low) < 14:
             return None, "Za mało danych"
@@ -166,14 +179,18 @@ def handle_command(text: str):
     if cmd == "/list":
         return "Pary:\n" + "\n".join(data["symbols"])
 
-    if cmd == "/add" and len(parts) > 1:
+    if cmd == "/add":
+        if len(parts) < 2:
+            return "Użycie: /add EURUSD"
         symbol = yahoo_symbol(parts[1])
         if symbol not in data["symbols"]:
             data["symbols"].append(symbol)
             save_data(data)
         return f"Dodano: {symbol}"
 
-    if cmd == "/remove" and len(parts) > 1:
+    if cmd == "/remove":
+        if len(parts) < 2:
+            return "Użycie: /remove EURUSD"
         symbol = yahoo_symbol(parts[1])
         if symbol in data["symbols"]:
             data["symbols"].remove(symbol)
@@ -181,10 +198,14 @@ def handle_command(text: str):
             return f"Usunięto: {symbol}"
         return "Nie znaleziono"
 
-    if cmd == "/signal" and len(parts) > 1:
+    if cmd == "/signal":
+        if len(parts) < 2:
+            return "Użycie: /signal EURUSD"
+
         result, error = get_signal(parts[1])
         if error:
             return f"Błąd: {error}"
+
         return (
             f"Para: {result['symbol']}\n"
             f"Sygnał: {result['action']}\n"
@@ -234,4 +255,4 @@ def telegram_webhook():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 10000)))
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 10000))
