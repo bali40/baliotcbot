@@ -211,7 +211,7 @@ def home():
     return "Bot działa", 200
 
 
-@app.route(f"/{TELEGRAM_BOT_TOKEN}", methods=["POST"])
+@app.route("/", methods=["POST"])
 def telegram_webhook():
     update = request.json or {}
 
