@@ -2,4 +2,4 @@ flask
 requests
 yfinance
 pandas
-nump
+numpy
