@@ -494,7 +494,7 @@ def setup_webhook_route():
     return jsonify(result), 200
 
 
-if __name-__ == "__main__":
+if __name__ == "__main__":
     if BOT_TOKEN == "TU_WSTAW_TOKEN_BOTA":
         raise ValueError("Ustaw BOT_TOKEN w zmiennych środowiskowych albo w pliku.")
 
