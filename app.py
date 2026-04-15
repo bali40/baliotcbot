@@ -1,47 +1,10 @@
-[21:18, 15.04.2026] Sebastian Woźny: import os
-import time
-import logging
-import yfinance as yf
-
-from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import Application, CommandHandler, ContextTypes
-
-# =========================
-# KONFIGURACJA I LOGI
-# =========================
-
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
-
-BOT_TOKEN = os.getenv("BOT_TOKEN", "TU_WSTAW_TOKEN_BOTA")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://twoj-adres.pl")
-PORT = int(os.getenv("PORT", "8443"))
-
-# cooldown trzymany w pamięci procesu
-_LAST_SIGNAL_TS = {}
-
-# =========================
-# NARZĘDZIA
-# =========================
-
-def normalize_symbol(symbol: str) -> str:
-    """
-   …
-[21:46, 15.04.2026] Sebastian Woźny: import os
+import os
 import time
 import logging
 import requests
 import yfinance as yf
 
 from flask import Flask, request, jsonify
-
-# =========================
-# KONFIGURACJA I LOGI
-# =========================
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -58,22 +21,10 @@ WEBHOOK_PATH = f"/{BOT_TOKEN}"
 WEBHOOK_FULL_URL = f"{WEBHOOK_URL}{WEBHOOK_PATH}"
 
 app = Flask(__name__)
-
-# cooldown trzymany w pamięci procesu
 _LAST_SIGNAL_TS = {}
 
-# =========================
-# NARZĘDZIA
-# =========================
 
 def normalize_symbol(symbol: str) -> str:
-    """
-    Normalizuje symbol wpisany przez użytkownika.
-    Przykłady:
-    eurusd -> EURUSD
-    EUR/USD -> EURUSD
-    eurusd-otc -> EURUSD
-    """
     if not symbol:
         return ""
 
@@ -86,11 +37,6 @@ def normalize_symbol(symbol: str) -> str:
 
 
 def yahoo_symbol(symbol: str) -> str:
-    """
-    Mapowanie symbolu pod Yahoo Finance.
-    Dla forex Yahoo zwykle używa formatu XXXYYY=X
-    np. EURUSD -> EURUSD=X
-    """
     s = normalize_symbol(symbol)
 
     forex_pairs = {
@@ -108,10 +54,7 @@ def yahoo_symbol(symbol: str) -> str:
     return s
 
 
-def escape_markdown(text: str) -> str:
-    """
-    Proste escapowanie znaków dla Telegram MarkdownV2.
-    """
+def escape_markdown(text) -> str:
     if text is None:
         return ""
 
@@ -126,10 +69,6 @@ def escape_markdown(text: str) -> str:
 
 
 def format_signal_message(signal: dict) -> str:
-    """
-    Formatuje wiadomość po polsku do Telegrama.
-    Używa MarkdownV2.
-    """
     if not signal:
         return "Brak sygnału."
 
@@ -185,9 +124,6 @@ def format_signal_message(signal: dict) -> str:
 
 
 def send_telegram_message(chat_id: int, text: str):
-    """
-    Wysyła wiadomość do Telegrama.
-    """
     url = f"{TELEGRAM_API}/sendMessage"
     payload = {
         "chat_id": chat_id,
@@ -205,9 +141,6 @@ def send_telegram_message(chat_id: int, text: str):
 
 
 def set_webhook():
-    """
-    Ustawia webhook Telegrama.
-    """
     url = f"{TELEGRAM_API}/setWebhook"
     payload = {"url": WEBHOOK_FULL_URL}
 
@@ -222,27 +155,12 @@ def set_webhook():
         return {"ok": False, "error": str(e)}
 
 
-# =========================
-# LOGIKA SYGNAŁU OTC M1
-# =========================
-
 def get_signal(symbol: str):
-    """
-    Strategia OTC M1:
-    - EMA 9 / 21
-    - RSI 14
-    - Stochastic 14,3,3
-    - pullback do EMA
-    - filtr jakości świecy
-    - filtr spike
-    - cooldown
-    - expiry 2 / 3 / 5 min
-    """
     tf = "1m"
     yf_sym = yahoo_symbol(symbol)
 
     cooldown_seconds = 180
-    pullback_tolerance = 0.0015   # 0.15%
+    pullback_tolerance = 0.0015
     min_body_ratio = 0.40
     max_spike_factor = 1.8
 
@@ -288,25 +206,22 @@ def get_signal(symbol: str):
         low = low.iloc[-min_len:]
         close = close.iloc[-min_len:]
 
-        # EMA
         ema9 = close.ewm(span=9, adjust=False).mean()
         ema21 = close.ewm(span=21, adjust=False).mean()
 
-        # RSI 14
         delta = close.diff()
         gain = delta.clip(lower=0).rolling(14).mean()
         loss = (-delta.clip(upper=0)).rolling(14).mean()
         rs = gain / loss.replace(0, 1e-9)
         rsi = 100 - (100 / (1 + rs))
 
-        # Stochastic 14,3,3
         lowest_low = low.rolling(14).min()
         highest_high = high.rolling(14).max()
         stoch_k_raw = 100 * ((close - lowest_low) / (highest_high - lowest_low).replace(0, 1e-9))
         stoch_k = stoch_k_raw.rolling(3).mean()
         stoch_d = stoch_k.rolling(3).mean()
 
-        i = -1  # ostatnia zamknięta świeca
+        i = -1
 
         last_open = float(open_.iloc[i])
         last_high = float(high.iloc[i])
@@ -332,8 +247,6 @@ def get_signal(symbol: str):
             return None, "Wskaźniki nie są jeszcze gotowe"
 
         norm_symbol = normalize_symbol(symbol)
-
-        # cooldown
         now_ts = time.time()
         last_signal_ts = _LAST_SIGNAL_TS.get(norm_symbol)
 
@@ -355,7 +268,6 @@ def get_signal(symbol: str):
             result["message"] = format_signal_message(result)
             return result, None
 
-        # analiza świecy
         candle_range = max(last_high - last_low, 1e-9)
         candle_body = abs(last_close - last_open)
         body_ratio = candle_body / candle_range
@@ -367,7 +279,6 @@ def get_signal(symbol: str):
         bullish_candle = last_close > last_open
         bearish_candle = last_close < last_open
 
-        # pullback do EMA
         near_ema9 = abs(last_close - last_ema9) / max(abs(last_close), 1e-9) <= pullback_tolerance
         near_ema21 = abs(last_close - last_ema21) / max(abs(last_close), 1e-9) <= pullback_tolerance
 
@@ -385,7 +296,6 @@ def get_signal(symbol: str):
             or near_ema21
         )
 
-        # stochastic cross
         stoch_cross_up = prev_k <= prev_d and last_k > last_d
         stoch_cross_down = prev_k >= prev_d and last_k < last_d
 
@@ -394,9 +304,7 @@ def get_signal(symbol: str):
         action = "NONE"
         reason = "Brak wyraźnej przewagi"
         expiry_min = None
-        score = 0
 
-        # BUY
         if (
             last_ema9 > last_ema21
             and touched_ema_buy
@@ -408,23 +316,10 @@ def get_signal(symbol: str):
             and not spike
             and last_k < 80
         ):
-            score += 1
-            score += 1
-            score += 1
-            score += 1
-            score += 1
-
-            if score >= 5:
-                expiry_min = 2
-            elif score == 4:
-                expiry_min = 3
-            else:
-                expiry_min = 5
-
+            expiry_min = 2
             action = "BUY"
             reason = "Trend wzrostowy, cofnięcie do EMA, RSI powyżej 50 i przecięcie Stochastic w górę"
 
-        # SELL
         elif (
             last_ema9 < last_ema21
             and touched_ema_sell
@@ -436,19 +331,7 @@ def get_signal(symbol: str):
             and not spike
             and last_k > 20
         ):
-            score += 1
-            score += 1
-            score += 1
-            score += 1
-            score += 1
-
-            if score >= 5:
-                expiry_min = 2
-            elif score == 4:
-                expiry_min = 3
-            else:
-                expiry_min = 5
-
+            expiry_min = 2
             action = "SELL"
             reason = "Trend spadkowy, cofnięcie do EMA, RSI poniżej 50 i przecięcie Stochastic w dół"
 
@@ -491,10 +374,6 @@ def get_signal(symbol: str):
         logger.exception("Błąd podczas analizy sygnału")
         return None, f"Błąd podczas analizy sygnału: {str(e)}"
 
-
-# =========================
-# OBSŁUGA KOMEND
-# =========================
 
 def handle_start(chat_id: int):
     text = (
@@ -553,9 +432,6 @@ def handle_signal(chat_id: int, text: str):
 
 
 def process_telegram_update(data: dict):
-    """
-    Obsługa przychodzącego update z webhooka Telegrama.
-    """
     try:
         message = data.get("message") or data.get("edited_message")
         if not message:
@@ -577,19 +453,13 @@ def process_telegram_update(data: dict):
         else:
             send_telegram_message(
                 chat_id,
-                escape_markdown(
-                    "Nieznana komenda.\n\nUżyj:\n/start\n/help\n/signal EURUSD"
-                )
+                escape_markdown("Nieznana komenda.\n\nUżyj:\n/start\n/help\n/signal EURUSD")
             )
 
     except Exception as e:
         logger.exception("Błąd podczas przetwarzania update")
         try:
-            chat_id = (
-                data.get("message", {})
-                .get("chat", {})
-                .get("id")
-            )
+            chat_id = data.get("message", {}).get("chat", {}).get("id")
             if chat_id:
                 send_telegram_message(
                     chat_id,
@@ -598,10 +468,6 @@ def process_telegram_update(data: dict):
         except Exception:
             pass
 
-
-# =========================
-# ROUTES FLASK
-# =========================
 
 @app.route("/", methods=["GET"])
 def health():
@@ -628,11 +494,7 @@ def setup_webhook_route():
     return jsonify(result), 200
 
 
-# =========================
-# START
-# =========================
-
-if __name__ == "__main__":
+if __name-__ == "__main__":
     if BOT_TOKEN == "TU_WSTAW_TOKEN_BOTA":
         raise ValueError("Ustaw BOT_TOKEN w zmiennych środowiskowych albo w pliku.")
 
@@ -643,4 +505,4 @@ if __name__ == "__main__":
     set_webhook()
 
     logger.info("Start Flask na porcie %s", PORT)
-    app.run(host="0.0.0.0", port=POR
+    app.run(host="0.0.0.0", port=PORT)
