@@ -12,8 +12,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "TU_WSTAW_TOKEN_BOTA")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://twoj-adres.pl")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8694188742:AAGI8Rq4h9vOOrhmKfY7A9ZI1xa4OLTghk0")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://baliotcbot.onrender.com")
 PORT = int(os.getenv("PORT", "10000"))
 
 TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
