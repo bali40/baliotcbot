@@ -1,6 +1,5 @@
 flask
 requests
-yfinance
 pandas
-numpy
+werkzeug
 gunicorn
